@@ -1,0 +1,43 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.env
+*.env
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode/
+.idea/
+
+# Log files
+*.log
+
+# Video/media files
+*.mp4
+*.mov
+*.avi
+*.mkv
+*.webm
+*.wav
+*.mp3
+
+# Subtitles and temp output
+*.srt
+*.vtt
+*.ass
+*.tmp
+*.bak
+
+# FFmpeg output
+*.ts
+*.m3u8
+*.jpg
+*.png
+*.out.*
