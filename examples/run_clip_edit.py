@@ -10,7 +10,7 @@ def main():
     os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     print(f"Processing: {input_file}")
-    stack_main_and_reaction(input_file, output_file)
+    stack_main_and_reaction(input_file, output_file, "Caedrel")
     print(f"Saved to: {output_file}")
 
 
