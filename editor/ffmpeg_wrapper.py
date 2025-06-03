@@ -10,39 +10,34 @@ class FFmpegStacker:
         self.logo_path = logo_path
         self.filter_parts = []
 
-    def add_main_clip(self):
-        # Top part: game area
-        self.filter_parts.append("[0:v]crop=1024:1080:448:0,scale=1080:1632[main]")
+        self.streamer_srt = None
+        self.others_srt = None
 
-    def add_facecam_crop(self):
-        # Bottom part: cropped facecam area
-        self.filter_parts.append("[0:v]crop=300:350:0:730,scale=1080:-1[cam]")
+    def add_subtitle_layers(self, streamer_srt: str, others_srt: str):
+        self.streamer_srt = streamer_srt
+        self.others_srt = others_srt
 
-    def add_text_overlay(self):
-        # Add drawbox and drawtext on the facecam crop
-        text = (
-            "[cam]drawbox=0:0:iw:ih:white@1:4,"
-            f"drawtext=text='{self.streamer_name}':"
-            "fontcolor=white:fontsize=28:x=w-tw-20:y=h-th-20:"
-            "box=1:boxcolor=black@0.5:boxborderw=4[react_text]"
+        self.filter_parts.append(
+            f"[0:v]subtitles='{streamer_srt}':force_style='FontName=NotoSansCJK-Regular,Alignment=1'[s1]"
         )
-        self.filter_parts.append(text)
+        self.filter_parts.append(
+            f"[s1]subtitles='{others_srt}':force_style='FontName=NotoSansCJK-Regular,Alignment=9'[vsubbed]"
+        )
 
-    def add_logo_overlay(self):
-        # Scale the logo and overlay onto facecam + text
-        self.filter_parts.append("[1:v]scale=40:40[logo]")
-        self.filter_parts.append("[react_text][logo]overlay=x=W-w-160:y=H-h-20[react]")
-
-    def add_vstack(self):
-        # Final vertical stack
-        self.filter_parts.append("[main][react]vstack=inputs=2[out]")
+    def add_main_clip(self):
+        # Scale to width 1080 and pad to 1920 height, keeping aspect ratio
+        self.filter_parts.append("[vsubbed]scale=1080:-1,pad=1080:1920:(ow-iw)/2:(oh-ih)/2[main]")
 
     def build_filter_complex(self):
+        self.filter_parts.clear()
+
+        if self.streamer_srt and self.others_srt:
+            self.add_subtitle_layers(self.streamer_srt, self.others_srt)
+        else:
+            # Just pass the video unchanged
+            self.filter_parts.append("[0:v]format=yuv420p[vsubbed]")
+
         self.add_main_clip()
-        self.add_facecam_crop()
-        self.add_text_overlay()
-        self.add_logo_overlay()
-        self.add_vstack()
         return ";".join(self.filter_parts)
 
     def run(self):
@@ -53,7 +48,7 @@ class FFmpegStacker:
             "-i", self.input_path,
             "-i", self.logo_path,
             "-filter_complex", filter_complex,
-            "-map", "[out]",
+            "-map", "[main]",
             "-map", "0:a?",
             "-c:v", "libx264",
             "-preset", "veryfast",

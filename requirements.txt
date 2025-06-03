@@ -1,3 +1,29 @@
+# Transcription
+git+https://github.com/openai/whisper.git
+torch
+torchaudio
+
+# Diarization
+pyannote.audio
+huggingface-hub
+
+# Fix known dependency constraints
+pyyaml>=5.4,<8.0
+packaging<25.0
+mediapipe>=0.10.0
+
+# Video analysis
+opencv-python-headless
 ffmpeg-python
+
+# Subtitle handling
+pysubs2
+
+# Audio & numeric processing
+pydub
+numpy
+scipy
+
+# Testing & config
 pytest
-python-dotenv  # If needed for config
+python-dotenv
