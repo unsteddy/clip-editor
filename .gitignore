@@ -15,6 +15,7 @@ Thumbs.db
 # IDE settings
 .vscode/
 .idea/
+.assets/
 
 # Log files
 *.log

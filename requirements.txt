@@ -15,6 +15,7 @@ mediapipe>=0.10.0
 # Video analysis
 opencv-python-headless
 ffmpeg-python
+pytesseract
 
 # Subtitle handling
 pysubs2
@@ -27,5 +28,3 @@ scipy
 # Testing & config
 pytest
 python-dotenv
-
-assets/*

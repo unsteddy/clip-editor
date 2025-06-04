@@ -13,10 +13,15 @@ dimensions (1080x1920) while preserving the original aspect ratio.
 * Adds top and bottom padding (centered vertically)
 * Supports dual-layer subtitle rendering:
 
-    * Streamer's subtitles (bottom)
-    * Others' subtitles (top)
+  * Streamer's subtitles (bottom)
+  * Others' subtitles (top)
 * Configurable Twitch logo overlay (future use)
 * Uses `ffmpeg` under the hood
+* **\[NEW] TikTok Subtitle Translation:**
+
+  * Detects Chinese subtitles frame-by-frame using Tesseract OCR
+  * Blurs the original subtitle area
+  * Overlays English translations in the same position with matched styling
 
 ---
 
@@ -26,9 +31,14 @@ dimensions (1080x1920) while preserving the original aspect ratio.
 2. The resized video is padded to fit the full 1920px height.
 3. Optional `.srt` subtitle files are rendered:
 
-    * Streamer's subtitles are bottom-aligned.
-    * Others' subtitles are top-aligned.
-4. Final output is encoded using `libx264`.
+   * Streamer's subtitles are bottom-aligned.
+   * Others' subtitles are top-aligned.
+4. **\[TikTok workflow]**:
+
+   * Chinese subtitles are detected using OCR
+   * Their regions are blurred
+   * Translations are overlaid in the same region
+5. Final output is encoded using `libx264`.
 
 ---
 
@@ -44,6 +54,13 @@ editor/
 ├── output/                    # Default output directory
 ├── assets/
 │   └── twitch_logo_40px.png   # Logo (optional)
+subtitle_processing/
+├── subtitle_detector.py       # Chinese text detection
+├── subtitle_tracker.py        # Tracks detected regions across frames
+editor/
+├── blur.py                    # Blurs subtitle regions
+├── overlay.py                 # Overlays translated subtitles
+main.py                        # End-to-end TikTok clip processor
 ```
 
 ---
@@ -63,11 +80,18 @@ editor.add_subtitle_layers("output/streamer.srt", "output/others.srt")
 editor.run()
 ```
 
+To run the TikTok subtitle processor:
+
+```bash
+python main.py
+```
+
 This will:
 
-* Render both subtitle tracks
+* Render both subtitle tracks (if used)
 * Format the video to YouTube Shorts dimensions
-* Output to `output/vertical_clip.mp4`
+* Detect and translate Chinese subtitles (if present)
+* Output to `assets/sample_output.mp4`
 
 ---
 
@@ -84,8 +108,13 @@ This will:
 * `whisper`
 * `resemblyzer`
 * `opencv-python`
+* `pytesseract` (Python wrapper for Tesseract OCR)
 
-Install all dependencies with:
+System requirement:
+
+* `tesseract-ocr` with Simplified Chinese (`chi_sim`) language pack
+
+Install Python dependencies:
 
 ```bash
 pip install -r requirements.txt
@@ -99,6 +128,8 @@ pip install -r requirements.txt
 * Automatic logo and text overlays
 * Subtitle translation and styling
 * Watermarking and final branding
+* \[TikTok] Automatic translation mapping via API or model
+* \[TikTok] Font/style mimicry for original subtitles
 
 ---
 
