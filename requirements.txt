@@ -27,3 +27,5 @@ scipy
 # Testing & config
 pytest
 python-dotenv
+
+assets/*
