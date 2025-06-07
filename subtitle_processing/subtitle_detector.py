@@ -9,6 +9,7 @@ MIN_TEXT_LENGTH = 3
 CHINESE_CHAR_PATTERN = re.compile(r'[\u4e00-\u9fff]')
 CONFIDENCE_THRESHOLD = 0.8
 OCR_INTERVAL = 5  # Run OCR every N frames
+IOU_REUSE_THRESHOLD = 0.9  # IOU threshold for fuzzy match reuse
 
 
 class SubtitleDetector:
@@ -17,15 +18,19 @@ class SubtitleDetector:
         self.net = cv2.dnn.readNet(self.east_model_path)
         self.prev_subtitles: Dict[str, Tuple[int, Tuple[int, int, int, int]]] = {}
         self.frame_index = -1
+        self.last_frame_result: List[Dict] = []
+        self.last_frame_bboxes: List[Tuple[int, int, int, int]] = []
 
     def detect(self, frame: np.ndarray) -> List[Dict]:
         self.frame_index += 1
 
-        if self.frame_index % OCR_INTERVAL != 0:
-            return self._reuse_previous_subtitles()
-
         text_regions = self._detect_text_regions(frame)
         grouped_regions = self._group_text_boxes(text_regions)
+
+        # Reuse logic based on hash or IOU fuzzy match
+        if self._should_reuse_previous(grouped_regions):
+            print("♻️ Reusing previous OCR results (boxes match or very similar)")
+            return self.last_frame_result
 
         ocr_results = []
         for (x, y, w, h) in grouped_regions:
@@ -41,12 +46,47 @@ class SubtitleDetector:
                 self.prev_subtitles[text] = (self.frame_index, (x, y, w, h))
                 ocr_results.append({"text": text, "bbox": (x, y, w, h)})
 
-        if self.frame_index == 0:  # Only save debug image for first frame
+        # Update cache
+        self.last_frame_result = ocr_results
+        self.last_frame_bboxes = grouped_regions
+
+        if self.frame_index == 0:
             for result in ocr_results:
                 self._draw_box(frame, *result["bbox"], color=(0, 255, 0))
             cv2.imwrite("debug_regions_filtered.jpg", frame)
 
         return ocr_results
+
+    def _should_reuse_previous(self, new_bboxes: List[Tuple[int, int, int, int]]) -> bool:
+        if not self.last_frame_bboxes or len(new_bboxes) != len(self.last_frame_bboxes):
+            return False
+
+        for new_box, old_box in zip(new_bboxes, self.last_frame_bboxes):
+            if self._bbox_hash(new_box) == self._bbox_hash(old_box):
+                continue
+            if self._bbox_iou(new_box, old_box) >= IOU_REUSE_THRESHOLD:
+                continue
+            return False
+
+        return True
+
+    def _bbox_hash(self, bbox: Tuple[int, int, int, int]) -> int:
+        # Round to nearest 10 pixels to make comparison more forgiving
+        return hash((round(bbox[0] / 10), round(bbox[1] / 10), round(bbox[2] / 10), round(bbox[3] / 10)))
+
+    def _bbox_iou(self, boxA, boxB):
+        xA = max(boxA[0], boxB[0])
+        yA = max(boxA[1], boxB[1])
+        xB = min(boxA[0] + boxA[2], boxB[0] + boxB[2])
+        yB = min(boxA[1] + boxA[3], boxB[1] + boxB[3])
+
+        interArea = max(0, xB - xA) * max(0, yB - yA)
+        if interArea == 0:
+            return 0.0
+
+        boxAArea = boxA[2] * boxA[3]
+        boxBArea = boxB[2] * boxB[3]
+        return interArea / float(boxAArea + boxBArea - interArea)
 
     def _reuse_previous_subtitles(self) -> List[Dict]:
         results = []
