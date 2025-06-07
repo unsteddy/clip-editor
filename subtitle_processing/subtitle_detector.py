@@ -20,28 +20,53 @@ class SubtitleDetector:
 
     def detect(self, frame: np.ndarray) -> List[Dict]:
         self.frame_index += 1
-
-        result = self.ocr.ocr(frame, cls=True)
+        height, width = frame.shape[:2]
         ocr_results = []
+        reused_texts = set()
 
-        for line in result[0]:
-            box_points = line[0]  # list of 4 points
+        # 1. Reuse previously detected subtitles if still visible
+        for prev in self.last_frame_result:
+            text = prev["text"]
+            x, y, w, h = prev["bbox"]
+
+            # Crop the same region in the new frame
+            x1, y1 = max(x, 0), max(y, 0)
+            x2, y2 = min(x + w, width), min(y + h, height)
+            roi = frame[y1:y2, x1:x2]
+
+            if roi.size == 0:
+                continue
+
+            # Run OCR on cropped region
+            region_result = self.ocr.ocr(roi, cls=True)
+            if region_result and region_result[0]:
+                detected_text = region_result[0][0][1][0].strip()
+                if detected_text == text:
+                    ocr_results.append({"text": text, "bbox": (x, y, w, h)})
+                    reused_texts.add(text)
+
+        # 2. Run full-frame OCR to detect new subtitles
+        full_result = self.ocr.ocr(frame, cls=True)
+        for line in full_result[0]:
+            box_points = line[0]
             text = line[1][0].strip()
-            confidence = line[1][1]
 
             if len(text) >= MIN_TEXT_LENGTH and CHINESE_CHAR_PATTERN.search(text):
-                # Convert box_points to x, y, w, h
+                if text in reused_texts:
+                    continue  # Already reused it
+
                 x_coords = [pt[0] for pt in box_points]
                 y_coords = [pt[1] for pt in box_points]
                 x, y = int(min(x_coords)), int(min(y_coords))
                 w, h = int(max(x_coords)) - x, int(max(y_coords)) - y
 
-                self.prev_subtitles[text] = (self.frame_index, (x, y, w, h))
                 ocr_results.append({"text": text, "bbox": (x, y, w, h)})
 
+        # 3. Update state
         self.last_frame_result = ocr_results
         self.last_frame_bboxes = [r["bbox"] for r in ocr_results]
 
+        # 4. Draw results and save debug frame
         for result in ocr_results:
             self._draw_box(frame, *result["bbox"], color=(0, 255, 0))
         cv2.imwrite(f"debug_frames/debug_regions_filtered_{self.frame_index:04d}.jpg", frame)
