@@ -1,11 +1,13 @@
 from typing import List, Dict, Tuple
+from difflib import SequenceMatcher
 import numpy as np
 
 
 class SubtitleTracker:
-    def __init__(self, max_age=10, iou_threshold=0.5):
+    def __init__(self, max_age=10, iou_threshold=0.5, text_similarity_threshold=0.8):
         self.max_age = max_age
         self.iou_threshold = iou_threshold
+        self.text_similarity_threshold = text_similarity_threshold
         self.tracks: Dict[int, Dict] = {}
         self.next_id = 0
 
@@ -14,12 +16,16 @@ class SubtitleTracker:
         assigned_ids = set()
 
         for det in detections:
-            best_iou = 0
+            best_match_score = 0
             best_track_id = None
+
             for track_id, track in self.tracks.items():
                 iou = self._bbox_iou(track['bbox'], det['bbox'])
-                if iou > best_iou and iou > self.iou_threshold:
-                    best_iou = iou
+                text_sim = self._text_similarity(track['text'], det['text'])
+                match_score = (iou > self.iou_threshold) * text_sim  # prioritize both
+
+                if match_score > best_match_score and text_sim > self.text_similarity_threshold:
+                    best_match_score = match_score
                     best_track_id = track_id
 
             if best_track_id is not None:
@@ -65,5 +71,7 @@ class SubtitleTracker:
         boxAArea = boxA[2] * boxA[3]
         boxBArea = boxB[2] * boxB[3]
 
-        iou = interArea / float(boxAArea + boxBArea - interArea)
-        return iou
+        return interArea / float(boxAArea + boxBArea - interArea)
+
+    def _text_similarity(self, a: str, b: str) -> float:
+        return SequenceMatcher(None, a, b).ratio()

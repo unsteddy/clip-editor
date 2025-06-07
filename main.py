@@ -19,11 +19,14 @@ def main():
     start_time = time.time()
 
     while cap.isOpened():
+        if frame_idx == 10:
+            break
+
         ret, frame = cap.read()
         if not ret:
             break
 
-        tracked_subtitles = pipeline.process_frame(frame, frame_idx=frame_idx, total_frames=total_frames)
+        tracked_subtitles = pipeline.process_frame(frame)
 
         print(f"🧠 Frame {frame_idx} subtitles:")
         for sub in tracked_subtitles:
@@ -37,9 +40,6 @@ def main():
             cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 2)
             cv2.putText(frame, f"ID {sid}", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX,
                         0.5, (0, 255, 255), 1, cv2.LINE_AA)
-
-        if frame_idx == 0:
-            cv2.imwrite("debug_pipeline_output.jpg", frame)
 
         frame_idx += 1
 

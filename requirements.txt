@@ -31,3 +31,6 @@ scipy
 # Testing & config
 pytest
 python-dotenv
+
+# PaddleOCR - subtitle detector
+paddleocr>=2.6
