@@ -40,8 +40,6 @@ class SubtitleDetector:
             config = '--psm 6'
             text = pytesseract.image_to_string(roi, config=config, lang='chi_sim').strip()
 
-            print(f"🧪 OCR [{x}, {y}, {w}, {h}]:", repr(text))
-
             if len(text) >= MIN_TEXT_LENGTH and CHINESE_CHAR_PATTERN.search(text):
                 self.prev_subtitles[text] = (self.frame_index, (x, y, w, h))
                 ocr_results.append({"text": text, "bbox": (x, y, w, h)})
@@ -53,7 +51,7 @@ class SubtitleDetector:
         if self.frame_index == 0:
             for result in ocr_results:
                 self._draw_box(frame, *result["bbox"], color=(0, 255, 0))
-            cv2.imwrite("debug_regions_filtered.jpg", frame)
+            cv2.imwrite(f"debug_frames/debug_regions_filtered_{self.frame_index:04d}.jpg", frame)
 
         return ocr_results
 
