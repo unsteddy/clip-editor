@@ -67,6 +67,13 @@ main.py                        # End-to-end TikTok clip processor
 
 ## 🧪 Example Usage
 
+### 📦 Setup
+Run the following after `pip install -r requirements.txt`:
+
+```bash
+python setup_models.py
+
+
 ```python
 from editor.ffmpeg_wrapper import FFmpegStacker
 

@@ -1,60 +1,39 @@
 import cv2
-import os
-import logging
-from subtitle_processing.subtitle_detector import detect_chinese_subtitles
+from subtitle_processing.subtitle_detector import SubtitleDetector
 from subtitle_processing.subtitle_tracker import SubtitleTracker
-from editor.blur import blur_regions
-from editor.overlay import overlay_translations
-from tqdm import tqdm
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='[%(levelname)s] %(message)s')
-logger = logging.getLogger(__name__)
-
-# Example placeholder translation map
-translation_map = {
-    "你好": "Hello",
-    "谢谢": "Thank you",
-    # Add more mappings as needed
-}
 
 
-def process_video(input_path, output_path):
-    logger.info(f"Opening video: {input_path}")
-    cap = cv2.VideoCapture(input_path)
-    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
-    fps = cap.get(cv2.CAP_PROP_FPS)
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+def main():
+    video_path = "assets/sample_clip.mp4"
+    cap = cv2.VideoCapture(video_path)
 
-    out = cv2.VideoWriter(output_path, fourcc, fps, (width, height))
+    ret, frame = cap.read()
+    if not ret:
+        print("❌ Failed to read the first frame of the video.")
+        return
 
+    detector = SubtitleDetector()
     tracker = SubtitleTracker()
-    frame_count = 0
 
-    with tqdm(total=total_frames, desc="Processing Frames", unit="frame") as pbar:
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                break
+    # Detect subtitles in first frame
+    detected_subs = detector.detect(frame)
+    print("🔍 Detected subtitles:", detected_subs)
 
-            frame_count += 1
+    # Track detected subtitles
+    tracked_subs = tracker.update(detected_subs)
+    print("📌 Tracked subtitles:", tracked_subs)
 
-            regions = detect_chinese_subtitles(frame)
-            tracked_regions = tracker.update(regions)
-            blurred = blur_regions(frame, tracked_regions)
-            final = overlay_translations(blurred, tracked_regions, translation_map)
+    # Draw tracked subtitles
+    for sub in tracked_subs:
+        x, y, w, h = sub["bbox"]
+        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 0), 2)
+        cv2.putText(frame, f"#{sub['id']}: {sub['text']}", (x, y - 10),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
 
-            out.write(final)
-            pbar.update(1)
-
-    cap.release()
-    out.release()
-    logger.info(f"Saved processed video to {output_path}")
+    # Save the frame instead of displaying it
+    cv2.imwrite("tracked_subtitles_first_frame.png", frame)
+    print("✅ Frame saved as 'tracked_subtitles_first_frame.png'")
 
 
 if __name__ == "__main__":
-    sample_input = os.path.join("assets", "sample_clip.mp4")
-    sample_output = os.path.join("assets", "sample_output.mp4")
-    process_video(sample_input, sample_output)
+    main()

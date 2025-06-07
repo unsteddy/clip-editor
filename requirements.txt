@@ -1,3 +1,6 @@
+# Before running, download EAST model:
+# python setup_models.py
+
 # Transcription
 git+https://github.com/openai/whisper.git
 torch
